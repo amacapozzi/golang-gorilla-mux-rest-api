@@ -23,7 +23,8 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/user", routes.GetUsersHandle)
+	r.HandleFunc("/", routes.GetUsersHandle)
+	r.HandleFunc("/user/{id}", routes.FindUserById)
 
 	http.ListenAndServe(":3000", r)
 }
