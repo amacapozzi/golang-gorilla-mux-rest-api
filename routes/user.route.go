@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"mongodb-server/database"
 	"mongodb-server/types"
 	"net/http"
@@ -41,7 +42,13 @@ func FindUserById(w http.ResponseWriter, r *http.Request) {
 	id, err := primitive.ObjectIDFromHex(vars["id"])
 
 	if err != nil {
-		panic(err.Error())
+		response := types.ApiResponse{
+			StatusCode: 400,
+			Message:    err.Error(),
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	findQuery := bson.M{"_id": id}
@@ -52,4 +59,14 @@ func FindUserById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(&user)
+}
+
+func HandleCreate(w http.ResponseWriter, r *http.Request) {
+	bodyData := r.Body
+
+	defer bodyData.Close()
+
+	fmt.Println(bodyData)
+
+	w.Write([]byte("Body data"))
 }
