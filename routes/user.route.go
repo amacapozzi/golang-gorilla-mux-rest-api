@@ -3,7 +3,6 @@ package routes
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"mongodb-server/database"
 	"mongodb-server/types"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func GetUsersHandle(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +43,7 @@ func FindUserById(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		response := types.ApiResponse{
-			StatusCode: 400,
-			Message:    err.Error(),
+			Message: err.Error(),
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(response)
@@ -62,11 +61,40 @@ func FindUserById(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleCreate(w http.ResponseWriter, r *http.Request) {
-	bodyData := r.Body
+	var user types.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+	var existingUser types.User
+	err := database.COLLECTION.FindOne(context.TODO(), bson.M{"username": user.Name}).Decode(&existingUser)
+	if err == nil {
+		response := types.ApiResponse{
+			Message: "User already exists",
+		}
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(&response)
+		return
+	}
 
-	defer bodyData.Close()
+	if err != mongo.ErrNoDocuments {
+		http.Error(w, "Error checking user", http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Println(bodyData)
-
-	w.Write([]byte("Body data"))
+	_, err = database.COLLECTION.InsertOne(context.TODO(), bson.M{"username": user.Name})
+	if err != nil {
+		response := types.ApiResponse{
+			Message: "Failed to create user: " + err.Error(),
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(&response)
+		return
+	}
+	response := types.ApiResponse{
+		Message: "User created successfully",
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(&response)
 }

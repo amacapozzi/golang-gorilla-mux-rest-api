@@ -23,8 +23,9 @@ func main() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/", routes.GetUsersHandle)
-	r.HandleFunc("/user/{id}", routes.FindUserById)
+	r.HandleFunc("/", routes.GetUsersHandle).Methods("GET")
+	r.HandleFunc("/user/{id}", routes.FindUserById).Methods("GET")
+	r.HandleFunc("/create", routes.HandleCreate).Methods("POST")
 
 	http.ListenAndServe(":3000", r)
 }
